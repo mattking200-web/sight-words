@@ -3,204 +3,169 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dolch Master v3</title>
+    <title>Dolch Master - Interactive</title>
     <style>
-        body { font-family: sans-serif; text-align: center; background: #f0f2f5; padding: 20px; }
-        .card { background: white; max-width: 500px; margin: 20px auto; padding: 30px; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-        .word-box { font-size: 4rem; font-weight: bold; margin: 20px 0; min-height: 100px; display: flex; align-items: center; justify-content: center; gap: 15px; }
+        :root { --primary: #4a90e2; --success: #2ecc71; --warning: #f1c40f; --danger: #e74c3c; --light: #f5f6fa; --dark: #2c3e50; }
+        body { font-family: 'Segoe UI', sans-serif; text-align: center; background: var(--light); margin: 0; padding: 20px; }
         
-        /* Buttons */
-        .mode-nav { margin-bottom: 20px; }
-        button { padding: 10px 15px; margin: 5px; border-radius: 5px; border: 1px solid #ccc; cursor: pointer; font-weight: bold; }
-        .active { background: #4a90e2; color: white; border-color: #2a70c2; }
-        .mic-btn { width: 80px; height: 80px; border-radius: 50%; font-size: 2rem; background: #eee; }
-        .listening { background: #e74c3c; color: white; animation: pulse 1s infinite; }
-        .hear-btn { background: #f1c40f; font-size: 1.2rem; border: none; padding: 10px; border-radius: 50%; width: 45px; height: 45px; }
+        /* Goal Tracker */
+        .goal-container { width: 100%; max-width: 500px; background: #ddd; height: 20px; border-radius: 10px; margin: 10px auto; overflow: hidden; }
+        #progress-bar { width: 0%; height: 100%; background: var(--success); transition: width 0.5s; }
+        
+        .card { background: white; max-width: 550px; margin: 20px auto; padding: 30px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); position: relative; }
+        
+        /* Word & Scramble Styles */
+        .word-display { font-size: 4rem; font-weight: bold; min-height: 120px; display: flex; align-items: center; justify-content: center; gap: 15px; }
+        .letter-tile { display: inline-block; padding: 10px 15px; margin: 5px; background: var(--primary); color: white; border-radius: 8px; cursor: pointer; font-size: 2rem; user-select: none; transition: transform 0.2s; }
+        .letter-tile:hover { transform: scale(1.1); background: var(--dark); }
 
-        /* Helpers */
-        .dots { display: flex; justify-content: center; gap: 8px; margin-bottom: 10px; }
-        .dot { width: 12px; height: 12px; border-radius: 50%; background: #ddd; }
-        .dot.on { background: #2ecc71; }
-        #feedback { font-weight: bold; margin: 15px; height: 20px; color: #555; }
-        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
+        /* Buttons */
+        .nav { margin-bottom: 20px; display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+        button { padding: 12px 20px; border-radius: 50px; border: none; cursor: pointer; font-weight: bold; background: #e0e0e0; transition: 0.3s; }
+        button.active { background: var(--primary); color: white; }
+        .mic-btn { width: 70px; height: 70px; border-radius: 50%; font-size: 2rem; background: #ddd; margin-top: 20px; }
+        .listening { background: var(--danger); color: white; animation: pulse 1.2s infinite; }
+        .hear-btn { background: var(--warning); border-radius: 50%; width: 45px; height: 45px; border: none; font-size: 1.2rem; cursor: pointer; }
+
+        #feedback { height: 30px; margin: 15px; font-weight: bold; font-size: 1.1rem; }
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
     </style>
 </head>
 <body>
 
-    <h1>Dolch Word Teacher</h1>
+    <h1>📚 Dolch Word Master</h1>
+    
+    <div style="font-weight: bold;">Course Progress</div>
+    <div class="goal-container"><div id="progress-bar"></div></div>
+    <div id="goal-text" style="font-size: 0.8rem; margin-bottom: 20px;">0 / 40 Words Mastered</div>
 
-    <div class="mode-nav" id="nav">
-        <button id="m1" class="active" onclick="setStrategy('standard')">Read</button>
-        <button id="m2" onclick="setStrategy('flash')">Flash</button>
-        <button id="m3" onclick="setStrategy('sentence')">Sentence</button>
-        <button id="m4" onclick="setStrategy('spelling')">Scramble</button>
-        <button id="m5" onclick="setStrategy('listen')">Listen</button>
+    <div class="nav">
+        <button id="btn-standard" class="active" onclick="setStrategy('standard')">Read</button>
+        <button id="btn-flash" onclick="setStrategy('flash')">Flash</button>
+        <button id="btn-sentence" onclick="setStrategy('sentence')">Sentence</button>
+        <button id="btn-spelling" onclick="setStrategy('spelling')">Scramble</button>
+        <button id="btn-listen" onclick="setStrategy('listen')">Listen</button>
     </div>
 
     <div class="card">
-        <div id="dots" class="dots"></div>
-        <div class="word-box" id="display">Loading...</div>
-        <div id="feedback">Click the Mic to start</div>
+        <div id="dots" style="display: flex; justify-content: center; gap: 8px; margin-bottom: 10px;"></div>
+        <div id="display" class="word-display">Loading...</div>
+        <div id="feedback">Click the mic and say the word!</div>
         <button id="mic" class="mic-btn" onclick="startListening()">🎤</button>
     </div>
 
-    <p id="debug" style="color: grey; font-size: 0.8rem;">Status: App Ready</p>
-
 <script>
-    // --- APP DATA ---
-    const words = ["the", "to", "and", "a", "i", "you", "it", "in", "said", "for", "up", "look", "is", "go", "we", "little", "down", "can", "see", "not", "one", "my", "me", "big", "come", "blue", "red", "where", "jump", "away", "here", "help", "make", "yellow", "two", "play", "run", "find", "three", "funny"];
-    const sentences = {"the": "The sun is hot.", "to": "Go to bed.", "and": "Fish and chips.", "a": "I see a cat.", "i": "I am here.", "you": "You are nice.", "it": "It is fun.", "in": "In the box.", "said": "She said yes.", "for": "This is for me.", "up": "Look up.", "look": "Look at that.", "is": "He is big.", "go": "Go fast.", "we": "We can play.", "little": "A little dog.", "down": "Sit down.", "can": "I can run.", "see": "I see you.", "not": "I am not sad.", "one": "One big apple.", "my": "My blue hat.", "me": "Look at me.", "big": "A big plane.", "come": "Come here.", "blue": "The sky is blue.", "red": "A red apple.", "where": "Where is it?", "jump": "Jump high.", "away": "Fly away.", "here": "Stay here.", "help": "Help me please.", "make": "Make a cake.", "yellow": "A yellow bus.", "two": "Two green frogs.", "play": "Let's play.", "run": "Run fast.", "find": "Find the ball.", "three": "Three little pigs.", "funny": "A funny clown."};
-    const homophones = {"to": ["two", "too", "2"], "two": ["to", "too", "2"], "for": ["four", "4"], "one": ["won", "1"], "i": ["eye"], "see": ["sea", "c"], "red": ["read"], "blue": ["blew"], "a": ["ay", "hey"]};
+    const dolch = ["the", "to", "and", "a", "i", "you", "it", "in", "said", "for", "up", "look", "is", "go", "we", "little", "down", "can", "see", "not", "one", "my", "me", "big", "come", "blue", "red", "where", "jump", "away", "here", "help", "make", "yellow", "two", "play", "run", "find", "three", "funny"];
+    const sentences = {"the": "The cat is fast.", "to": "Go to school.", "and": "You and me.", "a": "A big dog.", "i": "I am six.", "you": "You are kind.", "it": "It is cold.", "in": "In the car.", "said": "Mom said hi.", "for": "Just for you.", "up": "Stand up.", "look": "Look at this.", "is": "He is tall.", "go": "Go play.", "we": "We are a team.", "little": "A little bug.", "down": "Sit down.", "can": "I can jump.", "see": "I see a bird.", "not": "I am not tired.", "one": "One apple.", "my": "My red toy.", "me": "Give it to me.", "big": "A big plane.", "come": "Come over.", "blue": "Blue sky.", "red": "Red ball.", "where": "Where is it?", "jump": "Jump high.", "away": "Fly away.", "here": "I am here.", "help": "Help me.", "make": "Make a mess.", "yellow": "Yellow duck.", "two": "Two cats.", "play": "Play ball.", "run": "Run fast.", "find": "Find the hat.", "three": "Three pigs.", "funny": "Funny joke."};
+    const homophones = {"to": ["two", "too", "2"], "two": ["to", "too", "2"], "for": ["four", "4"], "one": ["won", "1"], "i": ["eye"], "see": ["sea", "c"]};
 
-    // --- APP STATE ---
-    let learningPool = [];
-    let masteredPool = [];
-    let queue = [...words];
-    let currentWordObj = null;
-    let strategy = 'standard'; // This stays the same unless the user clicks a button
-    let isListening = false;
+    let learning = [], mastered = [], queue = [...dolch], current = null, strategy = 'standard', isListening = false, scrambleInput = "";
 
-    // --- CORE FUNCTIONS ---
     function init() {
-        for(let i=0; i<3; i++) {
-            if(queue.length > 0) learningPool.push({ text: queue.shift(), count: 0 });
-        }
+        for(let i=0; i<3; i++) if(queue.length) learning.push({ text: queue.shift(), count: 0 });
         pickWord();
     }
 
     function setStrategy(s) {
         strategy = s;
-        // Visual button update
-        document.querySelectorAll('.mode-nav button').forEach(b => b.classList.remove('active'));
-        if (s === 'standard') document.getElementById('m1').classList.add('active');
-        if (s === 'flash') document.getElementById('m2').classList.add('active');
-        if (s === 'sentence') document.getElementById('m3').classList.add('active');
-        if (s === 'spelling') document.getElementById('m4').classList.add('active');
-        if (s === 'listen') document.getElementById('m5').classList.add('active');
+        document.querySelectorAll('.nav button').forEach(b => b.classList.remove('active'));
+        document.getElementById('btn-' + s).classList.add('active');
         render();
     }
 
     function pickWord() {
-        // 20% chance to show a mastered word
-        if (masteredPool.length > 0 && Math.random() < 0.2) {
-            currentWordObj = masteredPool[Math.floor(Math.random() * masteredPool.length)];
-            currentWordObj.isReview = true;
+        if (mastered.length > 0 && Math.random() < 0.2) {
+            current = mastered[Math.floor(Math.random() * mastered.length)];
+            current.isReview = true;
         } else {
-            currentWordObj = learningPool[Math.floor(Math.random() * learningPool.length)];
-            currentWordObj.isReview = false;
+            current = learning[Math.floor(Math.random() * learning.length)];
+            current.isReview = false;
         }
+        scrambleInput = "";
         render();
     }
 
     function render() {
-        const display = document.getElementById('display');
+        const disp = document.getElementById('display');
         const dots = document.getElementById('dots');
-        const word = currentWordObj.text;
+        const word = current.text;
         
-        // Render Dots
-        dots.innerHTML = '';
-        if (currentWordObj.isReview) {
-            dots.innerHTML = '⭐ Reviewing Mastered Word';
-        } else {
-            for(let i=0; i<3; i++) {
-                let d = document.createElement('div');
-                d.className = i < currentWordObj.count ? 'dot on' : 'dot';
-                dots.appendChild(d);
-            }
-        }
+        // Progress Dots
+        dots.innerHTML = current.isReview ? '⭐ Review' : Array(3).fill(0).map((_, i) => `<div style="width:12px; height:12px; border-radius:50%; background:${i < current.count ? '#2ecc71' : '#ddd'}"></div>`).join('');
 
         const hearBtn = `<button class="hear-btn" onclick="speak()">🔊</button>`;
 
-        // Render Strategy
         if (strategy === 'standard') {
-            display.innerHTML = `<span>${word}</span> ${hearBtn}`;
+            disp.innerHTML = `<span>${word}</span> ${hearBtn}`;
         } else if (strategy === 'flash') {
-            display.innerHTML = `<span id="f-word">${word}</span> ${hearBtn}`;
-            setTimeout(() => { if(document.getElementById('f-word')) document.getElementById('f-word').style.visibility = 'hidden'; }, 1000);
+            disp.innerHTML = `<span id="flash-target">${word}</span> ${hearBtn}`;
+            // Word is visible for 1.2 seconds, then disappears
+            setTimeout(() => { if(document.getElementById('flash-target')) document.getElementById('flash-target').style.color = 'white'; }, 1200);
         } else if (strategy === 'sentence') {
-            let s = sentences[word] || `Look at the ${word}.`;
-            display.innerHTML = `<span style="font-size:1.5rem">${s.replace(word, '<u>'+word+'</u>')}</span> ${hearBtn}`;
+            disp.innerHTML = `<span style="font-size:1.8rem">${sentences[word].replace(word, '<u>'+word+'</u>')}</span> ${hearBtn}`;
         } else if (strategy === 'spelling') {
-            let scrambled = word.split('').sort(() => Math.random() - 0.5).join(' ');
-            display.innerHTML = `<span style="letter-spacing:10px; color:#888">${scrambled}</span> ${hearBtn}`;
+            let letters = word.split('').sort(() => Math.random() - 0.5);
+            disp.innerHTML = `<div id="scramble-zone">${letters.map(l => `<span class="letter-tile" onclick="addToScramble('${l}', this)">${l}</span>`).join('')}</div>
+                              <div id="scramble-result" style="color:var(--primary); font-size:3rem; margin-top:10px;">${scrambleInput}</div>`;
         } else if (strategy === 'listen') {
-            display.innerHTML = `<span>🎧 Listen</span> ${hearBtn}`;
+            disp.innerHTML = `<span>🎧 Listen</span> ${hearBtn}`;
         }
-        
-        document.getElementById('feedback').innerText = "Press the mic and say the word";
-        document.getElementById('feedback').style.color = "#555";
+        updateGoal();
     }
 
-    function speak() {
-        const u = new SpeechSynthesisUtterance(currentWordObj.text);
-        window.speechSynthesis.speak(u);
+    function addToScramble(char, el) {
+        scrambleInput += char;
+        el.style.visibility = "hidden";
+        document.getElementById('scramble-result').innerText = scrambleInput;
+        if (scrambleInput.length === current.text.length) {
+            if (scrambleInput === current.text) {
+                document.getElementById('feedback').innerText = "Correct Spelling! Now say it!";
+                document.getElementById('feedback').style.color = "green";
+            } else {
+                document.getElementById('feedback').innerText = "Wrong order. Try again!";
+                setTimeout(render, 1000);
+            }
+        }
     }
 
-    // --- SPEECH RECOGNITION ---
-    const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    let rec = null;
-    if (Recognition) {
-        rec = new Recognition();
-        rec.lang = 'en-US';
-        rec.onstart = () => { 
-            isListening = true; 
-            document.getElementById('mic').classList.add('listening');
-            document.getElementById('feedback').innerText = "Listening...";
-        };
-        rec.onend = () => { 
-            isListening = false; 
-            document.getElementById('mic').classList.remove('listening');
-        };
+    function updateGoal() {
+        const percent = (mastered.length / dolch.length) * 100;
+        document.getElementById('progress-bar').style.width = percent + "%";
+        document.getElementById('goal-text').innerText = `${mastered.length} / ${dolch.length} Words Mastered`;
+    }
+
+    function speak() { window.speechSynthesis.speak(new SpeechSynthesisUtterance(current.text)); }
+
+    const Rec = window.SpeechRecognition || window.webkitSpeechRecognition;
+    let rec = Rec ? new Rec() : null;
+    if(rec) {
+        rec.onstart = () => { isListening = true; document.getElementById('mic').classList.add('listening'); };
+        rec.onend = () => { isListening = false; document.getElementById('mic').classList.remove('listening'); };
         rec.onresult = (e) => {
             const heard = e.results[0][0].transcript.toLowerCase().trim();
-            check(heard);
+            const target = current.text.toLowerCase();
+            if (heard === target || (homophones[target] && homophones[target].includes(heard)) || heard.includes(target)) {
+                document.getElementById('feedback').innerText = "✨ Correct!";
+                if (!current.isReview) {
+                    current.count++;
+                    if (current.count >= 3) {
+                        mastered.push(current);
+                        learning = learning.filter(w => w.text !== current.text);
+                        if (queue.length) learning.push({ text: queue.shift(), count: 0 });
+                    }
+                }
+                setTimeout(pickWord, 1500);
+            } else {
+                document.getElementById('feedback').innerText = `I heard "${heard}". Try again!`;
+                if(current.isReview) {
+                    mastered = mastered.filter(w => w.text !== current.text);
+                    current.count = 1; learning.push(current);
+                }
+            }
         };
     }
 
-    function startListening() {
-        if (!rec) return alert("Speech not supported in this browser.");
-        if (isListening) rec.stop(); else rec.start();
-    }
-
-    function check(heard) {
-        const target = currentWordObj.text.toLowerCase();
-        let isCorrect = (heard === target);
-
-        // Check homophones
-        if (!isCorrect && homophones[target] && homophones[target].includes(heard)) isCorrect = true;
-        // Check if word is part of phrase
-        if (!isCorrect && heard.includes(target)) isCorrect = true;
-
-        const fb = document.getElementById('feedback');
-        if (isCorrect) {
-            fb.innerText = "✨ Correct!";
-            fb.style.color = "green";
-            handleSuccess();
-        } else {
-            fb.innerText = `Heard "${heard}". Try again!`;
-            fb.style.color = "red";
-            if (currentWordObj.isReview) {
-                // Demote back to learning
-                masteredPool = masteredPool.filter(w => w.text !== currentWordObj.text);
-                currentWordObj.count = 1;
-                learningPool.push(currentWordObj);
-            }
-        }
-    }
-
-    function handleSuccess() {
-        if (!currentWordObj.isReview) {
-            currentWordObj.count++;
-            if (currentWordObj.count >= 3) {
-                masteredPool.push(currentWordObj);
-                learningPool = learningPool.filter(w => w.text !== currentWordObj.text);
-                if (queue.length > 0) learningPool.push({ text: queue.shift(), count: 0 });
-            }
-        }
-        setTimeout(pickWord, 1500);
-    }
-
-    // Initialize
+    function startListening() { if(rec) { if(isListening) rec.stop(); else rec.start(); } }
     window.onload = init;
 </script>
 </body>
